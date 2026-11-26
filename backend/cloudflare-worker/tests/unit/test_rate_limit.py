@@ -7,9 +7,9 @@ import pytest
 import routes.session as session_route
 from app import dispatch
 from core.rate_limit import count_hit
-from services import embeddings, gemini_client
+from core.sse import StreamResult
 from services.tokens import issue_token
-from tests.unit.conftest import FakeRateLimiter
+from tests.unit.conftest import FakeRateLimiter, collect, stub_gemini
 
 KEY = "k" * 48
 
@@ -21,17 +21,11 @@ class EmptyIndex:
 
 @pytest.fixture
 def env(monkeypatch):
-    async def fake_embed(text, key):
-        return [0.1] * 768
-
-    async def fake_generate(request, *, model, api_key):
-        return gemini_client.Generation("Hi!", "stop", {"promptTokenCount": 5})
+    stub_gemini(monkeypatch)
 
     async def fake_siteverify(token, secret, ip):
         return {"success": True, "hostname": "example.com"}
 
-    monkeypatch.setattr(embeddings, "embed_query", fake_embed)
-    monkeypatch.setattr(gemini_client, "generate", fake_generate)
     monkeypatch.setattr(session_route, "siteverify", fake_siteverify)
     return SimpleNamespace(
         ENVIRONMENT="development",
@@ -44,11 +38,19 @@ def env(monkeypatch):
     )
 
 
+class Done:
+    status = 200
+
+
 def post(env, path, body, ip="1.1.1.1", token=None):
     headers = {"CF-Connecting-IP": ip}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    return asyncio.run(dispatch("POST", f"http://l{path}", headers, env, "r", json.dumps(body)))
+    result = asyncio.run(dispatch("POST", f"http://l{path}", headers, env, "r", json.dumps(body)))
+    if isinstance(result, StreamResult):
+        collect(result)  # drain the stream like a client would
+        return Done()
+    return result
 
 
 def test_session_limit_per_ip(env):

@@ -25,7 +25,8 @@ class RequestContext:
     settings: Settings
     headers: dict[str, str] = field(default_factory=dict)  # lower-cased names
     body: str = ""
-    env: Any = None  # raw bindings (Vectorize, rate limiters)
+    env: Any = None  # raw bindings (Vectorize, rate limiter)
+    abort_signal: Any = None  # JS AbortSignal that fires when the visitor disconnects
 
     def json(self) -> dict[str, Any]:
         from core.errors import ApiError, ErrorCode

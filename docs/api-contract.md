@@ -67,6 +67,15 @@ event: error
 data: {"code":"upstream_unavailable","message":"The assistant is temporarily unavailable. Please try again."}
 
 ```
+Implementation notes (Phase 8):
+
+- Before the stream starts, everything fails as normal JSON: rate limits (429), session (401), validation
+  (422), retrieval and **opening the Gemini stream** (503). Only failures *after* `start` become an `error` event.
+- If the visitor disconnects, the Worker aborts the Gemini request through `request.signal` (no wasted tokens)
+  and logs `client_disconnected`.
+- The Worker streams through a `TransformStream`; Gemini's own SSE (`streamGenerateContent?alt=sse`) is parsed
+  incrementally and re-emitted as `token` events (thinking parts are skipped).
+
 Contract rules: exactly one `start`; zero or more `token`; exactly one terminal `complete` **or** `error`, then the
 stream closes. Auth, validation and rate-limit failures happen **before** streaming and use JSON + HTTP status.
 `finish_reason` ∈ `stop | max_tokens | safety | other`. `: ping` comment lines may appear (clients ignore them).

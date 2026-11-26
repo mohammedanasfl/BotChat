@@ -55,3 +55,13 @@ application logic.
 Decision: stay on the Free plan as agreed, and watch for error 1102 (CPU exceeded), especially once
 streaming is added in Phase 8. If requests start failing, Workers Paid ($5/month, 30 s CPU) is the fix,
 and that is the user's call.
+
+## Startup time
+
+Cloudflare documents a 1-second startup budget. Measured at deploy: 545–715 ms. A module-level `import asyncio`
+in `main.py` pushed it to 1,296 ms, so runtime-only imports stay inside the functions that use them.
+
+## Verifying streaming
+
+`pywrangler dev --remote` is not supported for Python Workers. Streaming is verified in the local Workers
+runtime (`curl -N`) and end-to-end in the browser with a real Turnstile session (Phases 15–16).

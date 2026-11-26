@@ -19,6 +19,7 @@ from core.cors import check_origin, cors_headers, preflight
 from core.errors import ApiError, ErrorCode, error_result
 from core.log import log_event
 from core.responses import JsonResult
+from core.sse import StreamResult
 from routes import resolve
 from services.http import UpstreamError
 
@@ -32,7 +33,8 @@ async def dispatch(
     body: str = "",
     *,
     body_too_large: bool = False,  # set from Content-Length before the body was read
-) -> JsonResult:
+    abort_signal: Any = None,
+) -> JsonResult | StreamResult:
     started = time.monotonic()
     path = urlsplit(url).path
     headers = {k.lower(): v for k, v in headers.items()}
@@ -55,6 +57,7 @@ async def dispatch(
                 headers=headers,
                 body=body,
                 env=env,
+                abort_signal=abort_signal,
             )
             result = handler(ctx)
             if inspect.isawaitable(result):

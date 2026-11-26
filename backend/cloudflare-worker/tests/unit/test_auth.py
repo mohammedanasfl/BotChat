@@ -6,11 +6,10 @@ import pytest
 
 import routes.session as session_route
 from app import dispatch
-from services import embeddings, gemini_client
 from services.http import UpstreamError
 from services.tokens import issue_token
 from services.turnstile import check_result
-from tests.unit.conftest import FakeRateLimiter
+from tests.unit.conftest import FakeRateLimiter, collect, stub_gemini
 
 KEY = "k" * 48
 HOST = "abinayagarment.dentcare-demo.workers.dev"
@@ -134,18 +133,11 @@ def test_session_missing_secret_is_generic_500():
 
 
 def stub_rag(monkeypatch):
-    async def fake_embed(text, key):
-        return [0.1] * 768
-
-    async def fake_generate(request, *, model, api_key):
-        return gemini_client.Generation("Hello!", "stop", {})
-
     class Index:
         async def query(self, vector, options):
             return {"matches": []}
 
-    monkeypatch.setattr(embeddings, "embed_query", fake_embed)
-    monkeypatch.setattr(gemini_client, "generate", fake_generate)
+    stub_gemini(monkeypatch, deltas=("Hello!",))
     return env(VECTORIZE=Index())
 
 
@@ -156,9 +148,8 @@ def chat(env_, auth=None):
 
 def test_chat_with_valid_session(monkeypatch):
     token, _ = issue_token(KEY, 900)
-    result = chat(stub_rag(monkeypatch), f"Bearer {token}")
-    assert result.status == 200
-    assert result.body["answer"] == "Hello!"
+    events = collect(chat(stub_rag(monkeypatch), f"Bearer {token}"))
+    assert ("token", {"text": "Hello!"}) in events
 
 
 @pytest.mark.parametrize("auth", [None, "Bearer", "Basic abc", "Bearer not.a.jwt"])

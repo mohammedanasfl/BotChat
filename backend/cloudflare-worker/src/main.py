@@ -9,7 +9,9 @@ from workers import Response, WorkerEntrypoint
 
 from app import dispatch
 from core.context import new_request_id
+from core.log import log_event
 from core.responses import finalize_headers
+from core.sse import StreamResult
 from durable.rate_limiter import RateLimiter  # noqa: F401 - Durable Object class must be exported
 
 # Reject oversized uploads from the header, before reading the body. Settings enforce the
@@ -28,8 +30,17 @@ class Default(WorkerEntrypoint):
         reads_body = method in ("POST", "PUT", "PATCH") and not too_large
         body = await request.text() if reads_body else ""
         result = await dispatch(
-            method, request.url, headers, self.env, request_id, body, body_too_large=too_large
+            method,
+            request.url,
+            headers,
+            self.env,
+            request_id,
+            body,
+            body_too_large=too_large,
+            abort_signal=request.js_object.signal,
         )
+        if isinstance(result, StreamResult):
+            return _stream_response(result, request_id)
         return Response(
             result.encoded_body(),
             status=result.status,
@@ -40,3 +51,38 @@ class Default(WorkerEntrypoint):
 def _body_limit(env) -> int:
     value = str(getattr(env, "MAX_BODY_BYTES", "") or "")
     return min(int(value), HARD_BODY_LIMIT) if value.isdigit() else 32_768
+
+
+def _stream_response(result: StreamResult, request_id: str):
+    """Return the readable side of a TransformStream now; write SSE events in the background."""
+    import asyncio
+
+    from js import Response as JsResponse
+    from js import TextEncoder, TransformStream
+    from pyodide.ffi import create_proxy, to_js
+    from workers import wait_until
+
+    stream = TransformStream.new()
+    writer = stream.writable.getWriter()
+
+    async def pump() -> None:
+        encoder = TextEncoder.new()
+        try:
+            async for text in result.events:
+                await writer.write(encoder.encode(text))  # rejects if the visitor disconnected
+        except Exception as error:
+            log_event("info", "stream_closed", request_id=request_id, reason=type(error).__name__)
+        finally:
+            await result.events.aclose()
+            try:
+                writer.close()  # not awaited: settles only once a reader drains the stream
+            except Exception:  # noqa: S110 - stream already closed by the client
+                pass
+
+    task = asyncio.ensure_future(pump())
+    proxy = create_proxy(task)
+    task.add_done_callback(lambda _done: proxy.destroy())
+    wait_until(proxy)  # keep the Worker alive until the stream is fully written
+
+    headers = finalize_headers(result, request_id)
+    return JsResponse.new(stream.readable, status=result.status, headers=to_js(headers))

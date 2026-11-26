@@ -5,13 +5,13 @@ from types import SimpleNamespace
 import pytest
 
 from app import dispatch
+from core.sse import SSEParser, StreamResult, format_event
 from prompts.builder import NO_REFERENCE_DATA, Turn, build_generate_request, retrieval_query
 from prompts.system_prompt import SYSTEM_PROMPT
-from services import embeddings, gemini_client
-from services.gemini_client import BLOCKED_MESSAGE, parse_generation
+from services.gemini_stream import BLOCKED_MESSAGE, StreamState, deltas_from_chunk
 from services.http import UpstreamError
 from services.retrieval import RetrievedChunk
-from tests.unit.conftest import FakeRateLimiter
+from tests.unit.conftest import FakeRateLimiter, collect, stub_gemini
 
 HOURS = RetrievedChunk("company-004", "Company › Working hours", "Mon-Sat 9-7.", 0.65)
 
@@ -80,38 +80,49 @@ def test_system_prompt_covers_key_rules():
         assert rule in SYSTEM_PROMPT
 
 
-# --- Gemini response parsing -------------------------------------------------------------
+# --- Gemini stream parsing ----------------------------------------------------------------
 
 
-def response(parts, finish="STOP", **extra):
-    return {
-        "candidates": [{"content": {"parts": parts}, "finishReason": finish}],
-        "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 5},
-        **extra,
-    }
+def test_sse_parser_handles_split_chunks_and_crlf():
+    parser = SSEParser()
+    assert parser.feed('data: {"a": 1}\r\n\r\ndata: {"b"') == [{"a": 1}]
+    assert parser.feed(": 2}\n\n") == [{"b": 2}]
+    assert parser.feed("event: ping\n\n") == []
 
 
-def test_parse_joins_text_and_skips_thoughts():
-    gen = parse_generation(
-        response([{"text": "thinking...", "thought": True}, {"text": "Yes, "}, {"text": "we do."}])
-    )
-    assert (gen.text, gen.finish_reason) == ("Yes, we do.", "stop")
-    assert gen.usage == {"promptTokenCount": 10, "candidatesTokenCount": 5}
+def test_format_event_is_single_data_line():
+    text = format_event("token", {"text": "line1\nline2"})
+    assert text == 'event: token\ndata: {"text":"line1\\nline2"}\n\n'
 
 
-def test_parse_maps_finish_reasons_and_blocks():
-    assert (
-        parse_generation(response([{"text": "Partial"}], "MAX_TOKENS")).finish_reason
-        == "max_tokens"
-    )
-    assert parse_generation({"promptFeedback": {"blockReason": "SAFETY"}}).text == BLOCKED_MESSAGE
-    assert parse_generation(response([], "SAFETY")).finish_reason == "safety"
+def chunk(parts, finish=None, **extra):
+    candidate = {"content": {"parts": parts}}
+    if finish:
+        candidate["finishReason"] = finish
+    return {"candidates": [candidate], **extra}
 
 
-@pytest.mark.parametrize("data", [{}, response([], "STOP")])
-def test_parse_rejects_empty_answers(data):
-    with pytest.raises(UpstreamError):
-        parse_generation(data)
+def test_deltas_skip_thoughts_and_track_finish_and_usage():
+    state = StreamState()
+    assert deltas_from_chunk(
+        chunk([{"text": "plan", "thought": True}, {"text": "Yes"}]), state
+    ) == ["Yes"]
+    usage = {"promptTokenCount": 9, "candidatesTokenCount": 3}
+    assert deltas_from_chunk(chunk([{"text": ", we do."}], "STOP", usageMetadata=usage), state) == [
+        ", we do."
+    ]
+    assert state.finish_reason == "stop" and state.usage == usage
+
+
+def test_deltas_map_blocked_and_safety():
+    state = StreamState()
+    assert deltas_from_chunk({"promptFeedback": {"blockReason": "SAFETY"}}, state) == [
+        BLOCKED_MESSAGE
+    ]
+    assert state.finish_reason == "safety"
+    assert deltas_from_chunk(chunk([], "SAFETY"), StreamState()) == [BLOCKED_MESSAGE]
+    assert deltas_from_chunk(chunk([{"text": "x"}], "MAX_TOKENS"), state) == ["x"]
+    assert state.finish_reason == "max_tokens"
 
 
 # --- full pipeline through POST /api/chat ------------------------------------------------
@@ -145,36 +156,68 @@ def make_env(matches=()):
     )
 
 
-def test_chat_runs_pipeline(monkeypatch):
-    seen = {}
+MATCHES = [
+    {
+        "id": "company-004",
+        "score": 0.65,
+        "metadata": {"heading": HOURS.heading, "text": HOURS.text},
+    },
+    {"id": "faqs-001", "score": 0.40, "metadata": {"heading": "x", "text": "y"}},
+]
 
-    async def fake_embed(text, key):
-        seen["query"] = text
-        return [0.1] * 768
 
-    async def fake_generate(request, *, model, api_key):
-        seen["request"], seen["model"] = request, model
-        return gemini_client.Generation("We are closed on Sundays.", "stop", {})
-
-    monkeypatch.setattr(embeddings, "embed_query", fake_embed)
-    monkeypatch.setattr(gemini_client, "generate", fake_generate)
-    matches = [
+def test_chat_streams_start_tokens_complete(monkeypatch, capsys):
+    calls = stub_gemini(monkeypatch, deltas=("We are ", "closed on Sundays."))
+    body = json.dumps(
         {
-            "id": "company-004",
-            "score": 0.65,
-            "metadata": {"heading": HOURS.heading, "text": HOURS.text},
-        },
-        {"id": "faqs-001", "score": 0.40, "metadata": {"heading": "x", "text": "y"}},
-    ]
-    body = json.dumps({"message": "Open Sunday?", "history": [{"role": "user", "content": "Hi"}]})
-    result = chat(make_env(matches), body)
+            "message": "Open Sunday?",
+            "history": [{"role": "user", "content": "Hi"}],
+            "conversation_id": "3f8a6c2e-6a1b-4f43-9a51-0c6e2f9d1b77",
+        }
+    )
+    result = chat(make_env(MATCHES), body)
+    assert isinstance(result, StreamResult)
+    assert result.headers["content-type"].startswith("text/event-stream")
 
-    assert result.status == 200
-    assert result.body["answer"] == "We are closed on Sundays."
-    assert result.body["sources"] == [{"chunk_id": "company-004", "heading": HOURS.heading}]
-    assert seen["query"] == "Hi\nOpen Sunday?"  # short follow-up
-    assert seen["model"] == "gemini-3.5-flash-lite"
-    assert "Mon-Sat 9-7." in seen["request"]["contents"][-1]["parts"][0]["text"]
+    events = collect(result)
+    assert events[0] == (
+        "start",
+        {"request_id": "r", "conversation_id": "3f8a6c2e-6a1b-4f43-9a51-0c6e2f9d1b77"},
+    )
+    assert events[1:3] == [
+        ("token", {"text": "We are "}),
+        ("token", {"text": "closed on Sundays."}),
+    ]
+    assert events[3] == (
+        "complete",
+        {
+            "finish_reason": "stop",
+            "sources": [{"chunk_id": "company-004", "heading": HOURS.heading}],
+        },
+    )
+    assert len(events) == 4
+    assert calls["query"] == "Hi\nOpen Sunday?"  # short follow-up
+    assert "Mon-Sat 9-7." in calls["request"]["contents"][-1]["parts"][0]["text"]
+    assert '"event":"chat_completed"' in capsys.readouterr().out
+
+
+def test_mid_stream_failure_ends_with_error_event(monkeypatch):
+    stub_gemini(monkeypatch, deltas=("Partial", "never"), fail_after=1)
+    events = collect(chat(make_env(), '{"message":"hi"}'))
+    assert [e[0] for e in events] == ["start", "token", "error"]
+    assert events[-1][1]["code"] == "upstream_unavailable"
+
+
+def test_empty_stream_ends_with_error_event(monkeypatch):
+    stub_gemini(monkeypatch, deltas=())
+    assert [e[0] for e in collect(chat(make_env(), '{"message":"hi"}'))] == ["start", "error"]
+
+
+def test_gemini_rejecting_before_stream_is_json_503(monkeypatch):
+    stub_gemini(monkeypatch, open_error=UpstreamError("gemini-stream", "HTTP 429", status=429))
+    result = chat(make_env(), '{"message":"hi"}')
+    assert result.status == 503
+    assert result.body["error"]["code"] == "upstream_unavailable"
 
 
 @pytest.mark.parametrize(
@@ -185,9 +228,24 @@ def test_chat_validates(body):
     assert chat(make_env(), body).status == 422
 
 
-def test_upstream_failure_maps_to_503(monkeypatch):
-    async def failing(text, key):
-        raise UpstreamError("gemini-embed", "HTTP 429", status=429)
+def test_client_disconnect_is_not_an_error(monkeypatch, capsys):
+    stub_gemini(monkeypatch, deltas=("Partial", "never"), fail_after=1)
+    env = make_env()
+    from services.tokens import issue_token
 
-    monkeypatch.setattr(embeddings, "embed_query", failing)
-    assert chat(make_env(), '{"message":"x"}').status == 503
+    token, _ = issue_token(KEY, 900)
+    aborted = SimpleNamespace(aborted=True)
+    result = asyncio.run(
+        dispatch(
+            "POST",
+            "http://l/api/chat",
+            {"Authorization": f"Bearer {token}"},
+            env,
+            "r",
+            '{"message":"hi"}',
+            abort_signal=aborted,
+        )
+    )
+    assert [e[0] for e in collect(result)] == ["start", "token"]  # no error event
+    logs = capsys.readouterr()
+    assert "client_disconnected" in logs.out and "stream_failed" not in logs.err
