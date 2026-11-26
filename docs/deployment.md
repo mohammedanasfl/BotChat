@@ -23,7 +23,7 @@ Smoke test after deploying:
 ```bash
 curl -i https://abinaya-chat-api.dentcare-demo.workers.dev/api/health          # 200 {"status":"ok"}
 curl -i https://abinaya-chat-api.dentcare-demo.workers.dev/api/health/ready    # 200 {"status":"ready"}
-curl -i -X POST https://abinaya-chat-api.dentcare-demo.workers.dev/api/dev/search   # 404 (dev only)
+curl -i -X POST https://abinaya-chat-api.dentcare-demo.workers.dev/api/dev/answer   # 404 (dev only)
 ```
 
 `/api/health/ready` returns `503 {"status":"not_ready"}` when the index is empty or has the wrong

@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import routes.search as search_route
 from app import dispatch
 from config.embedding import EMBEDDING_DIMENSIONS
 from services.embeddings import build_request, parse_response
@@ -85,7 +84,7 @@ def test_index_status(info, ready):
     assert index_status(info)[0] is ready
 
 
-# --- routes ------------------------------------------------------------------------------
+# --- readiness ---------------------------------------------------------------------------
 
 
 def env(**overrides):
@@ -95,42 +94,6 @@ def env(**overrides):
 
 def call(method, path, env_, body=""):
     return asyncio.run(dispatch(method, f"http://localhost{path}", {}, env_, "r_t", body))
-
-
-def test_dev_search_returns_filtered_results(monkeypatch):
-    async def fake_embed(text, key):
-        assert key == "test-key"
-        return [0.1] * 768
-
-    monkeypatch.setattr(search_route, "embed_query", fake_embed)
-    result = call("POST", "/api/dev/search", env(), '{"query": "open on Sunday?"}')
-    assert result.status == 200
-    assert [r["chunk_id"] for r in result.body["results"]] == ["company-004"]
-
-
-def test_dev_search_is_hidden_in_production():
-    prod = env(ENVIRONMENT="production", ALLOWED_ORIGINS="https://a.example")
-    assert call("POST", "/api/dev/search", prod, '{"query": "x"}').status == 404
-
-
-@pytest.mark.parametrize("body", ["not json", "[]", '{"query": ""}', '{"query": 5}'])
-def test_dev_search_validates_input(body):
-    assert call("POST", "/api/dev/search", env(), body).status in (400, 422)
-
-
-def test_dev_search_upstream_failure_is_503(monkeypatch):
-    async def failing(text, key):
-        raise UpstreamError("gemini-embed", "HTTP 429", status=429)
-
-    monkeypatch.setattr(search_route, "embed_query", failing)
-    result = call("POST", "/api/dev/search", env(), '{"query": "hi"}')
-    assert result.status == 503
-    assert result.body["error"]["code"] == "upstream_unavailable"
-
-
-def test_missing_gemini_key_is_generic_500(monkeypatch):
-    result = call("POST", "/api/dev/search", env(GEMINI_API_KEY=""), '{"query": "hi"}')
-    assert result.status == 500
 
 
 def test_ready_reports_not_ready_for_empty_index(capsys):

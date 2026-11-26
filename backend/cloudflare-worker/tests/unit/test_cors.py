@@ -49,5 +49,5 @@ def test_errors_also_carry_cors_headers_for_allowed_origin():
 
 def test_oversized_body_is_rejected():
     env_body = "x" * 40_000
-    result = run("POST", "/api/dev/search", body=env_body)
+    result = run("POST", "/api/dev/answer", body=env_body)
     assert result.status == 413

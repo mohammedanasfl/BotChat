@@ -43,7 +43,7 @@ cp .dev.vars.example .dev.vars
 | Upload to Vectorize | `uv run python -m indexer sync` (after `npx wrangler login`) |
 | Live Gemini test | `uv run --env-file .env pytest tests/live` |
 | Deploy | `uv run pywrangler deploy` (see docs/deployment.md) |
-| Dev-only search | `curl -X POST localhost:8787/api/dev/search -d '{"query":"Are you open on Sunday?"}'` |
+| Dev-only RAG answer | `curl -X POST localhost:8787/api/dev/answer -d '{"message":"Are you open on Sunday?"}'` |
 
 ## Configuration
 

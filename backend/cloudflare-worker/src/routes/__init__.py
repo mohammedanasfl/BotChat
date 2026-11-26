@@ -11,15 +11,15 @@ from collections.abc import Awaitable, Callable
 from core.context import RequestContext
 from core.errors import ApiError, ErrorCode
 from core.responses import JsonResult
+from routes.dev import dev_answer
 from routes.health import health, ready
-from routes.search import dev_search
 
 Handler = Callable[[RequestContext], JsonResult | Awaitable[JsonResult]]
 
 ROUTES: dict[str, dict[str, Handler]] = {
     "/api/health": {"GET": health},
     "/api/health/ready": {"GET": ready},
-    "/api/dev/search": {"POST": dev_search},  # development only (404 in production)
+    "/api/dev/answer": {"POST": dev_answer},  # development only (404 in production)
 }
 
 
