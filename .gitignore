@@ -30,3 +30,6 @@ npm-debug.log*
 .idea/
 .vscode/*
 !.vscode/settings.json
+
+# Local indexer cache (embeddings)
+.cache/

@@ -1,37 +1,60 @@
-"""Offline knowledge indexer CLI (operator machine only; never deployed to the Worker).
+"""Offline knowledge indexer CLI (operator machine only; never deployed).
 
-Usage (from backend/cloudflare-worker):
-    uv run python -m indexer <command>
-
-Commands are implemented in Phase 2 (chunks) and Phase 3 (reindex, query, eval).
+uv run python -m indexer chunks                  # show chunks, no API calls
+uv run --env-file .env python -m indexer embed   # embed new/changed chunks
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
+import os
 
-COMMANDS = {
-    "chunks": "Load and chunk knowledge files, print a chunk report (Phase 2)",
-    "reindex": "Embed new/changed chunks and sync them to Vectorize (Phase 3)",
-    "query": "Embed a question and show the best-matching chunks (Phase 3)",
-    "eval": "Run the labelled question set and report retrieval hit rate (Phase 3)",
-}
+from config.embedding import DOCUMENT_TASK_TYPE
+from indexer import CACHE_DIR, KNOWLEDGE_DIR
+from indexer.cache import load_cache, save_cache
+from indexer.chunker import Chunk, chunk_documents
+from indexer.loader import load_documents
 
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m indexer", description=__doc__.splitlines()[0])
-    sub = parser.add_subparsers(dest="command", required=True)
-    for name, help_text in COMMANDS.items():
-        sub.add_parser(name, help=help_text)
-    return parser
+CACHE_FILE = CACHE_DIR / "embeddings.json"
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    print(f"'{args.command}' is not implemented yet: {COMMANDS[args.command]}", file=sys.stderr)
-    return 2
+def load_chunks() -> list[Chunk]:
+    return chunk_documents(load_documents(KNOWLEDGE_DIR))
+
+
+def cmd_chunks() -> None:
+    chunks = load_chunks()
+    for c in chunks:
+        print(f"{c.chunk_id:<14} {len(c.text):>5}  {c.heading_path}")
+    sizes = [len(c.text) for c in chunks]
+    print(
+        f"\n{len(chunks)} chunks · {min(sizes)}-{max(sizes)} chars · avg {sum(sizes) // len(sizes)}"
+    )
+
+
+def cmd_embed() -> None:
+    from google import genai
+
+    from indexer.embedder import embed_texts
+
+    chunks = load_chunks()
+    cached = load_cache(CACHE_FILE)
+    missing = [c for c in chunks if c.content_sha256 not in cached]
+    if missing:
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        vectors = embed_texts(client, [c.embedding_text for c in missing], DOCUMENT_TASK_TYPE)
+        cached.update({c.content_sha256: v for c, v in zip(missing, vectors, strict=True)})
+    # Keep only vectors for current chunks.
+    save_cache(CACHE_FILE, {c.content_sha256: cached[c.content_sha256] for c in chunks})
+    print(f"{len(chunks)} chunks · {len(missing)} embedded · {len(chunks) - len(missing)} cached")
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(prog="python -m indexer")
+    parser.add_argument("command", choices=["chunks", "embed"])
+    args = parser.parse_args(argv)
+    {"chunks": cmd_chunks, "embed": cmd_embed}[args.command]()
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

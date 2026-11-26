@@ -12,7 +12,8 @@ src/                 # bundled into the Worker (src/ is the import root)
   routes/            # route table (__init__.py) and handlers
   core/              # errors, JsonResult, request context, structured logging
   config/            # settings.py (typed env parsing), embedding.py (shared with indexer)
-indexer/             # offline knowledge indexer CLI (never bundled)
+indexer/             # offline knowledge indexer CLI (never bundled), see docs/rag.md
+knowledge/           # verified business knowledge (markdown)
 tests/unit/          # pytest on CPython, no runtime imports
 ```
 
@@ -36,7 +37,9 @@ cp .dev.vars.example .dev.vars
 | Lint / format | `uv run ruff check . && uv run ruff format --check .` |
 | Local Workers runtime | `uv run pywrangler dev` → http://localhost:8787 |
 | Health check | `curl -i http://localhost:8787/api/health` |
-| Indexer CLI | `uv run python -m indexer --help` |
+| Chunk report | `uv run python -m indexer chunks` |
+| Embed knowledge | `uv run --env-file .env python -m indexer embed` |
+| Live Gemini test | `uv run --env-file .env pytest tests/live` |
 | Deploy (Phase 4+) | `uv run pywrangler deploy` |
 
 ## Configuration

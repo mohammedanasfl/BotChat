@@ -95,10 +95,3 @@ def test_request_ids_are_unique_and_well_formed():
 def test_embedding_config_fits_vectorize():
     validate_embedding_config()
     assert EMBEDDING_DIMENSIONS <= VECTORIZE_MAX_DIMENSIONS
-
-
-def test_indexer_cli_lists_commands(capsys):
-    from indexer.__main__ import main
-
-    assert main(["chunks"]) == 2
-    assert "not implemented yet" in capsys.readouterr().err
