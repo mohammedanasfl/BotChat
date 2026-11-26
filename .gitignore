@@ -1,0 +1,32 @@
+# Secrets — never commit (examples are allowed)
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-workers/
+python_modules/
+src/vendor/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Wrangler
+node_modules/
+.wrangler/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json

@@ -1,0 +1,16 @@
+{
+  "name": "abinaya-chat-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pins the project-local wrangler used by pywrangler",
+  "scripts": {
+    "dev": "uv run pywrangler dev",
+    "deploy": "uv run pywrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.168.0"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

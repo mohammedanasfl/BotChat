@@ -1,0 +1,37 @@
+[project]
+name = "abinaya-chat-api"
+version = "0.1.0"
+description = "Public chat API for the Abinaya Garments chatbot (Cloudflare Python Worker + Vectorize + Gemini)"
+readme = "README.md"
+requires-python = ">=3.12"
+# Runtime dependencies are bundled into the Worker. Keep this empty: the Worker uses only the
+# standard library and the `workers` runtime module (lower cold start and CPU time).
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "workers-py",            # provides `pywrangler`
+    "workers-runtime-sdk",   # type stubs for the `workers` runtime module
+    "pytest>=8",
+    "ruff>=0.8",
+]
+# Offline knowledge indexer (operator machine only, never bundled). Filled in Phase 2.
+indexer = []
+
+[tool.pytest.ini_options]
+# The Worker runtime treats src/ as the import root, so tests import the same way.
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["src/vendor", "python_modules", ".venv-workers"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "RUF"]
+ignore = ["S101"]  # assert is fine in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "config", "core", "routes", "indexer"]
