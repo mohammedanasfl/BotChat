@@ -15,8 +15,14 @@ dev = [
     "pytest>=8",
     "ruff>=0.8",
 ]
-# Offline knowledge indexer (operator machine only, never bundled). Filled in Phase 2.
-indexer = []
+# Offline knowledge indexer (operator machine only, never bundled into the Worker).
+indexer = [
+    "google-genai>=3.6",
+]
+
+[tool.uv]
+# Install the indexer group by default so `uv run` works for tests and the CLI.
+default-groups = ["dev", "indexer"]
 
 [tool.pytest.ini_options]
 # The Worker runtime treats src/ as the import root, so tests import the same way.
@@ -31,7 +37,12 @@ extend-exclude = ["src/vendor", "python_modules", ".venv-workers"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "RUF"]
-ignore = ["S101"]  # assert is fine in tests
+ignore = [
+    "S101",    # assert is fine in tests
+    "RUF001",  # "›" heading separator and NBSP test input are intentional
+    "RUF002",
+    "RUF003",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "config", "core", "routes", "indexer"]
