@@ -1,0 +1,30 @@
+{
+  "name": "abinaya-chat-widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Embeddable Abinaya Garments chatbot widget (React in a Web Component / Shadow DOM)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && cp playground.html dist/index.html",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.2"
+  }
+}

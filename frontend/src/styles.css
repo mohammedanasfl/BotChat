@@ -1,0 +1,156 @@
+/* Injected into the widget's shadow root: the host page's CSS can't reach in, ours can't leak out. */
+:host {
+  all: initial;
+}
+
+.root {
+  --paper: #fbf9f5;
+  --cream: #f5f1ea;
+  --ink: #171512;
+  --ink-soft: #5a554d;
+  --hairline: #ddd6ca;
+  --primary: #26335f;
+  position: fixed;
+  bottom: 20px;
+  z-index: 2147483000;
+  font-family: "Manrope Variable", Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.root.right { right: 20px; }
+.root.left { left: 20px; align-items: flex-start; }
+
+*, *::before, *::after { box-sizing: border-box; }
+svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+
+.launcher {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(23, 21, 18, 0.25);
+  transition: transform 0.15s ease;
+}
+.launcher:hover { transform: translateY(-2px); }
+.launcher svg { width: 24px; height: 24px; }
+
+.window {
+  width: 380px;
+  height: min(600px, calc(100vh - 110px));
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  box-shadow: 0 16px 48px rgba(23, 21, 18, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  background: var(--primary);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.title { margin: 0; font-family: "Fraunces Variable", Fraunces, Georgia, serif; font-size: 18px; font-weight: 600; }
+.subtitle { margin: 2px 0 0; font-size: 12.5px; opacity: 0.8; }
+.icon-button { background: none; border: none; color: inherit; cursor: pointer; padding: 4px; display: grid; }
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty p { margin: 4px 0 12px; color: var(--ink-soft); }
+.suggestions { display: flex; flex-direction: column; gap: 8px; }
+.suggestion {
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  color: var(--primary);
+  background: #fff;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.suggestion:hover { border-color: var(--primary); }
+
+.bubble {
+  max-width: 85%;
+  padding: 9px 13px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.bubble.user { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
+.bubble.assistant { align-self: flex-start; background: var(--cream); border: 1px solid var(--hairline); border-bottom-left-radius: 3px; }
+.bubble.error { border-color: #d9a89a; background: #fbefeb; }
+
+.typing { display: inline-block; width: 28px; height: 10px; background:
+  radial-gradient(circle, var(--ink-soft) 2.5px, transparent 3px) 0 50% / 9px 10px repeat-x;
+  animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+::slotted([slot="turnstile"]) { display: flex; justify-content: center; padding: 0 12px; }
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--hairline);
+  background: #fff;
+}
+.composer textarea {
+  flex: 1;
+  resize: none;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 8px 10px;
+  max-height: 96px;
+  outline: none;
+}
+.composer textarea:focus { border-color: var(--primary); }
+.send {
+  width: 40px;
+  border: none;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.send:disabled { opacity: 0.45; cursor: default; }
+
+.note { margin: 0; padding: 6px 12px 10px; font-size: 11px; color: var(--ink-soft); background: #fff; }
+
+@media (max-width: 480px) {
+  .root, .root.right, .root.left { right: 12px; left: auto; bottom: 12px; }
+  .root:has(.window) { inset: 0; gap: 0; }
+  .root:has(.window) .launcher { display: none; }
+  .window { width: 100vw; height: 100dvh; border-radius: 0; border: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launcher, .typing { transition: none; animation: none; }
+}

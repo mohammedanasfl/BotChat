@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "widget-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; nvm use 22 >/dev/null; cd frontend && npx vite --port 5173 --strictPort"],
+      "port": 5173
+    }
+  ]
+}
