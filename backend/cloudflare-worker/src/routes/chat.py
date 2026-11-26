@@ -1,12 +1,12 @@
-"""POST /api/dev/answer: development-only RAG check (404 in production).
+"""POST /api/chat: authenticated RAG answer.
 
-Runs the full pipeline (embed -> Vectorize -> Gemini) and returns the answer plus the retrieved
-chunks and scores for debugging. The public, authenticated, streaming POST /api/chat replaces it
-in Phase 8.
+Requires a session token from POST /api/session. Returns JSON for now; Phase 7 adds rate limits
+and full request validation, Phase 8 switches the response to Server-Sent Events.
 """
 
 from __future__ import annotations
 
+from core.auth import require_session
 from core.context import RequestContext
 from core.errors import ApiError, ErrorCode
 from core.responses import JsonResult, json_result
@@ -29,19 +29,14 @@ def _parse(ctx: RequestContext) -> tuple[str, list[Turn]]:
     return message.strip(), history
 
 
-async def dev_answer(ctx: RequestContext) -> JsonResult:
-    if ctx.settings.is_production:
-        raise ApiError(ErrorCode.NOT_FOUND)
+async def chat(ctx: RequestContext) -> JsonResult:
+    require_session(ctx)
     message, history = _parse(ctx)
     result = await rag.answer(message, history, ctx.settings, ctx.env.VECTORIZE)
     return json_result(
         {
             "answer": result.text,
             "finish_reason": result.finish_reason,
-            "sources": [
-                {"chunk_id": c.chunk_id, "heading": c.heading, "score": round(c.score, 4)}
-                for c in result.sources
-            ],
-            "usage": result.usage,
+            "sources": [{"chunk_id": c.chunk_id, "heading": c.heading} for c in result.sources],
         }
     )

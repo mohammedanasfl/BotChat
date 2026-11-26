@@ -34,7 +34,11 @@ class Settings:
     gemini_max_output_tokens: int
     search_top_k: int
     search_min_score: float
-    gemini_api_key: str = field(default="", repr=False)  # secret: never logged
+    turnstile_allowed_hostnames: tuple[str, ...] = ()
+    # Secrets: excluded from repr so they never reach logs.
+    gemini_api_key: str = field(default="", repr=False)
+    turnstile_secret_key: str = field(default="", repr=False)
+    session_signing_key: str = field(default="", repr=False)
     version: str = APP_VERSION
 
     @property
@@ -64,7 +68,14 @@ class Settings:
             ),
             search_top_k=_read_int(env, "SEARCH_TOP_K", 4, minimum=1, maximum=10),
             search_min_score=_read_float(env, "SEARCH_MIN_SCORE", 0.60),
+            turnstile_allowed_hostnames=tuple(
+                h.strip().lower()
+                for h in _read_str(env, "TURNSTILE_ALLOWED_HOSTNAMES", default="").split(",")
+                if h.strip()
+            ),
             gemini_api_key=_read_str(env, "GEMINI_API_KEY", default=""),
+            turnstile_secret_key=_read_str(env, "TURNSTILE_SECRET_KEY", default=""),
+            session_signing_key=_read_str(env, "SESSION_SIGNING_KEY", default=""),
         )
         settings._validate()
         return settings
@@ -76,6 +87,8 @@ class Settings:
             insecure = [o for o in self.allowed_origins if not o.startswith("https://")]
             if insecure:
                 raise ConfigError(f"Production origins must use https: {insecure}")
+            if not self.turnstile_allowed_hostnames:
+                raise ConfigError("TURNSTILE_ALLOWED_HOSTNAMES must not be empty in production")
 
 
 def _raw(env: Any, name: str) -> Any:
@@ -118,10 +131,14 @@ def _read_float(env: Any, name: str, default: float) -> float:
     return number
 
 
+def require_secret(value: str, name: str) -> str:
+    if not value:
+        raise ConfigError(f"{name} secret is not set")
+    return value
+
+
 def require_gemini_key(settings: Settings) -> str:
-    if not settings.gemini_api_key:
-        raise ConfigError("GEMINI_API_KEY secret is not set")
-    return settings.gemini_api_key
+    return require_secret(settings.gemini_api_key, "GEMINI_API_KEY")
 
 
 def _parse_origins(raw: str) -> tuple[str, ...]:

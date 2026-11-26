@@ -27,7 +27,9 @@ async def request_json(
     headers: dict[str, str] | None = None,
     body: dict[str, Any] | None = None,
     timeout_ms: int = 8000,
+    accept_statuses: tuple[int, ...] = (),
 ) -> dict[str, Any]:
+    """POST/GET JSON. Non-2xx raises UpstreamError unless listed in accept_statuses."""
     from js import AbortSignal
     from workers import fetch
 
@@ -42,7 +44,7 @@ async def request_json(
         response = await fetch(url, **options)
     except Exception as exc:  # network error or timeout (AbortSignal)
         raise UpstreamError(service, f"request failed: {type(exc).__name__}") from exc
-    if not 200 <= response.status < 300:
+    if not 200 <= response.status < 300 and response.status not in accept_statuses:
         raise UpstreamError(service, f"HTTP {response.status}", status=response.status)
     try:
         return json.loads(await response.text())

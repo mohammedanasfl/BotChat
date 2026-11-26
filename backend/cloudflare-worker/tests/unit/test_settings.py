@@ -6,6 +6,7 @@ from config.settings import APP_VERSION, ConfigError, Settings
 
 
 def env(**values):
+    values.setdefault("TURNSTILE_ALLOWED_HOSTNAMES", "abinayagarment.dentcare-demo.workers.dev")
     return SimpleNamespace(**values)
 
 

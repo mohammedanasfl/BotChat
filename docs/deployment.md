@@ -8,13 +8,15 @@
 | URL | https://abinaya-chat-api.dentcare-demo.workers.dev |
 | Account | the same Cloudflare account as the website (`dentcare-demo.workers.dev`) |
 | Bindings | `VECTORIZE` → `abinaya-kb` |
-| Secrets | `GEMINI_API_KEY` (Phase 4); `SESSION_SIGNING_KEY` and `TURNSTILE_SECRET_KEY` follow in Phase 6 |
+| Secrets | `GEMINI_API_KEY`, `TURNSTILE_SECRET_KEY`, `SESSION_SIGNING_KEY` (see docs/authentication.md) |
 
 ```bash
 cd backend/cloudflare-worker
 nvm use
 npx wrangler login                        # once per machine
-npx wrangler secret put GEMINI_API_KEY    # paste the key when prompted; never commit it
+npx wrangler secret put GEMINI_API_KEY         # paste when prompted; never commit
+npx wrangler secret put TURNSTILE_SECRET_KEY   # the widget's SECRET key (~35 chars), not the site key
+python3 -c "import secrets; print(secrets.token_urlsafe(48))" | npx wrangler secret put SESSION_SIGNING_KEY
 uv run pywrangler deploy
 ```
 
@@ -23,7 +25,7 @@ Smoke test after deploying:
 ```bash
 curl -i https://abinaya-chat-api.dentcare-demo.workers.dev/api/health          # 200 {"status":"ok"}
 curl -i https://abinaya-chat-api.dentcare-demo.workers.dev/api/health/ready    # 200 {"status":"ready"}
-curl -i -X POST https://abinaya-chat-api.dentcare-demo.workers.dev/api/dev/answer   # 404 (dev only)
+curl -i -X POST https://abinaya-chat-api.dentcare-demo.workers.dev/api/chat -d '{"message":"hi"}'   # 401 (needs a session)
 ```
 
 `/api/health/ready` returns `503 {"status":"not_ready"}` when the index is empty or has the wrong

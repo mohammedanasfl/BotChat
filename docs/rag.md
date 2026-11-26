@@ -119,8 +119,7 @@ message (+ history) ─► search query ─► embed ─► Vectorize (top 4, �
   friendly reply and unknown questions get an honest "I don't have that information".
 - **Model:** `gemini-3.5-flash-lite`, `thinkingLevel: minimal` (measured 0 thinking tokens), at most 1,024
   output tokens.
-- **Dev check:** `POST /api/dev/answer` (local only, 404 in production) returns the answer, sources and token
-  usage.
+- **Endpoint:** `POST /api/chat` (requires a session token, Phase 6) returns the answer and sources.
 
 ### Test results (local runtime, 2026-11-26)
 

@@ -4,7 +4,9 @@ from types import SimpleNamespace
 from app import dispatch
 
 ALLOWED = "https://abinayagarment.dentcare-demo.workers.dev"
-ENV = SimpleNamespace(ENVIRONMENT="production", ALLOWED_ORIGINS=ALLOWED)
+ENV = SimpleNamespace(
+    ENVIRONMENT="production", ALLOWED_ORIGINS=ALLOWED, TURNSTILE_ALLOWED_HOSTNAMES="a.example"
+)
 
 
 def run(method, path, origin=None, body=""):
@@ -49,5 +51,5 @@ def test_errors_also_carry_cors_headers_for_allowed_origin():
 
 def test_oversized_body_is_rejected():
     env_body = "x" * 40_000
-    result = run("POST", "/api/dev/answer", body=env_body)
+    result = run("POST", "/api/chat", body=env_body)
     assert result.status == 413

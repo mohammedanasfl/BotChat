@@ -7,7 +7,7 @@ import pytest
 from app import dispatch
 from prompts.builder import NO_REFERENCE_DATA, Turn, build_generate_request, retrieval_query
 from prompts.system_prompt import SYSTEM_PROMPT
-from services import embeddings, gemini_client, rag
+from services import embeddings, gemini_client
 from services.gemini_client import BLOCKED_MESSAGE, parse_generation
 from services.http import UpstreamError
 from services.retrieval import RetrievedChunk
@@ -113,7 +113,9 @@ def test_parse_rejects_empty_answers(data):
         parse_generation(data)
 
 
-# --- full pipeline through the dev route -------------------------------------------------
+# --- full pipeline through POST /api/chat ------------------------------------------------
+
+KEY = "k" * 48
 
 
 class FakeIndex:
@@ -124,7 +126,24 @@ class FakeIndex:
         return {"matches": self.matches}
 
 
-def test_dev_answer_runs_pipeline(monkeypatch):
+def chat(env, body):
+    from services.tokens import issue_token
+
+    token, _ = issue_token(KEY, 900)
+    headers = {"Authorization": f"Bearer {token}"}
+    return asyncio.run(dispatch("POST", "http://l/api/chat", headers, env, "r", body))
+
+
+def make_env(matches=()):
+    return SimpleNamespace(
+        ENVIRONMENT="development",
+        GEMINI_API_KEY="k",
+        SESSION_SIGNING_KEY=KEY,
+        VECTORIZE=FakeIndex(list(matches)),
+    )
+
+
+def test_chat_runs_pipeline(monkeypatch):
     seen = {}
 
     async def fake_embed(text, key):
@@ -145,15 +164,12 @@ def test_dev_answer_runs_pipeline(monkeypatch):
         },
         {"id": "faqs-001", "score": 0.40, "metadata": {"heading": "x", "text": "y"}},
     ]
-    env = SimpleNamespace(
-        ENVIRONMENT="development", GEMINI_API_KEY="k", VECTORIZE=FakeIndex(matches)
-    )
     body = json.dumps({"message": "Open Sunday?", "history": [{"role": "user", "content": "Hi"}]})
-    result = asyncio.run(dispatch("POST", "http://l/api/dev/answer", {}, env, "r", body))
+    result = chat(make_env(matches), body)
 
     assert result.status == 200
     assert result.body["answer"] == "We are closed on Sundays."
-    assert [s["chunk_id"] for s in result.body["sources"]] == ["company-004"]  # 0.40 filtered
+    assert result.body["sources"] == [{"chunk_id": "company-004", "heading": HOURS.heading}]
     assert seen["query"] == "Hi\nOpen Sunday?"  # short follow-up
     assert seen["model"] == "gemini-3.5-flash-lite"
     assert "Mon-Sat 9-7." in seen["request"]["contents"][-1]["parts"][0]["text"]
@@ -163,19 +179,8 @@ def test_dev_answer_runs_pipeline(monkeypatch):
     "body",
     ['{"message": ""}', '{"message": "hi", "history": [{"role": "system", "content": "x"}]}'],
 )
-def test_dev_answer_validates(body):
-    env = SimpleNamespace(ENVIRONMENT="development", GEMINI_API_KEY="k", VECTORIZE=FakeIndex([]))
-    assert (
-        asyncio.run(dispatch("POST", "http://l/api/dev/answer", {}, env, "r", body)).status == 422
-    )
-
-
-def test_dev_answer_hidden_in_production():
-    env = SimpleNamespace(ENVIRONMENT="production", ALLOWED_ORIGINS="https://a.example")
-    result = asyncio.run(
-        dispatch("POST", "http://l/api/dev/answer", {}, env, "r", '{"message":"x"}')
-    )
-    assert result.status == 404
+def test_chat_validates(body):
+    assert chat(make_env(), body).status == 422
 
 
 def test_upstream_failure_maps_to_503(monkeypatch):
@@ -183,9 +188,4 @@ def test_upstream_failure_maps_to_503(monkeypatch):
         raise UpstreamError("gemini-embed", "HTTP 429", status=429)
 
     monkeypatch.setattr(embeddings, "embed_query", failing)
-    env = SimpleNamespace(ENVIRONMENT="development", GEMINI_API_KEY="k", VECTORIZE=FakeIndex([]))
-    result = asyncio.run(
-        dispatch("POST", "http://l/api/dev/answer", {}, env, "r", '{"message":"x"}')
-    )
-    assert result.status == 503
-    assert rag  # module imported for monkeypatch targets
+    assert chat(make_env(), '{"message":"x"}').status == 503

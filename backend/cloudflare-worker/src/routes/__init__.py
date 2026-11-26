@@ -11,15 +11,17 @@ from collections.abc import Awaitable, Callable
 from core.context import RequestContext
 from core.errors import ApiError, ErrorCode
 from core.responses import JsonResult
-from routes.dev import dev_answer
+from routes.chat import chat
 from routes.health import health, ready
+from routes.session import create_session
 
 Handler = Callable[[RequestContext], JsonResult | Awaitable[JsonResult]]
 
 ROUTES: dict[str, dict[str, Handler]] = {
     "/api/health": {"GET": health},
     "/api/health/ready": {"GET": ready},
-    "/api/dev/answer": {"POST": dev_answer},  # development only (404 in production)
+    "/api/session": {"POST": create_session},
+    "/api/chat": {"POST": chat},  # requires a session token
 }
 
 

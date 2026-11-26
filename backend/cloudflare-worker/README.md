@@ -43,7 +43,7 @@ cp .dev.vars.example .dev.vars
 | Upload to Vectorize | `uv run python -m indexer sync` (after `npx wrangler login`) |
 | Live Gemini test | `uv run --env-file .env pytest tests/live` |
 | Deploy | `uv run pywrangler deploy` (see docs/deployment.md) |
-| Dev-only RAG answer | `curl -X POST localhost:8787/api/dev/answer -d '{"message":"Are you open on Sunday?"}'` |
+| Local session + chat | `curl -X POST localhost:8787/api/session -d '{"turnstile_token":"test"}'`, then `curl -X POST localhost:8787/api/chat -H 'Authorization: Bearer <token>' -d '{"message":"Open on Sunday?"}'` |
 
 ## Configuration
 
@@ -67,5 +67,5 @@ overrides them (and will hold secrets). Every value is parsed and validated in
 
 Bindings: `VECTORIZE` → `abinaya-kb` (`remote: true` so local dev uses the real index).
 
-Secrets (never committed): `GEMINI_API_KEY` (in `.dev.vars` locally, `wrangler secret put` in production);
-`SESSION_SIGNING_KEY` and `TURNSTILE_SECRET_KEY` follow in Phase 6.
+Secrets (never committed; `.dev.vars` locally, `wrangler secret put` in production): `GEMINI_API_KEY`,
+`TURNSTILE_SECRET_KEY`, `SESSION_SIGNING_KEY`. See docs/authentication.md.
