@@ -23,10 +23,11 @@ Website ──<script widget.js>──► <abinaya-chat> (React in Shadow DOM) �
 
 ## Go-live checklist (remaining steps)
 
-1. **Turnstile site key:** put the widget's real *site* key in `frontend/.env.production` (it currently holds
-   Cloudflare's test key, which the production API correctly rejects), then `cd frontend && npm run deploy`.
-2. **Turnstile hostnames:** in the Cloudflare dashboard, make sure the widget lists
-   `abinayagarment.dentcare-demo.workers.dev` and `abinaya-chatbot.dentcare-demo.workers.dev`.
+1. ~~**Turnstile site key**~~: done. The real site key is in `frontend/.env.production` and deployed. On the
+   real website Turnstile accepts the hostname and shows its human check.
+2. **Turnstile hostnames:** add `abinaya-chatbot.dentcare-demo.workers.dev` (the playground) to the widget in the
+   Cloudflare dashboard. Until then the playground shows Turnstile error 110200 ("domain not authorized"). The
+   website hostname is already authorized.
 3. **Merge the website PR** ([#1](https://github.com/Swethasekar5/Abinayagarment/pull/1)); Cloudflare Builds
    deploys `develop`.
 4. **Verify in a browser:** open the website, ask "Are you open on Sundays?", and watch the answer stream.
@@ -94,7 +95,7 @@ uv run python -m indexer sync                     # upload to Vectorize (no Work
 
 | Symptom | Likely cause → fix |
 |---|---|
-| Widget says "We couldn't verify your browser" | Test site key in the widget, or hostname missing from the Turnstile widget → checklist steps 1–2 |
+| Widget says "We couldn't verify your browser" or "temporarily unavailable" right away | Console shows Turnstile `110200`: the page's hostname isn't in the Turnstile widget → add it in the dashboard |
 | `/api/session` returns 500, logs `invalid-input-secret` | `TURNSTILE_SECRET_KEY` is the *site* key or wrong → `wrangler secret put TURNSTILE_SECRET_KEY` (~35 chars) |
 | `/api/health/ready` returns 503 | Read the `not_ready` log (`npx wrangler tail abinaya-chat-api`): empty index, missing Gemini key, or model unavailable |
 | Browser console shows a CORS error | The page's origin isn't in `ALLOWED_ORIGINS` (exact match, https) |

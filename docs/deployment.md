@@ -14,11 +14,9 @@ cd frontend
 npm run deploy      # tsc + vite build + wrangler deploy
 ```
 
-**Turnstile site key:** `.env.production` still holds Cloudflare's *test* site key (`1x00000000000000000000AA`).
-The production Worker correctly rejects test tokens (verified: the playground shows "We couldn't verify your
-browser"). To go live, put the widget's real **site** key in `frontend/.env.production`, add
-`abinaya-chatbot.dentcare-demo.workers.dev` to the widget's hostnames in the Cloudflare dashboard, and run
-`npm run deploy`.
+**Turnstile site key:** the real site key (`0x4AAAAAAGT6UbCBNHWDdo02`, public) is in `.env.production` and
+deployed. Each page hostname must be listed on the Turnstile widget; an unlisted hostname gives Turnstile error
+`110200` in the browser console.
 
 **Lesson learned:** run `wrangler pages project create` / `wrangler deploy` from the folder whose config you
 mean to deploy. Running it from `backend/cloudflare-worker` created an accidental copy of the API Worker named
