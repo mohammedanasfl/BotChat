@@ -19,7 +19,7 @@ Website ──<script widget.js>──► <abinaya-chat> (React in Shadow DOM) �
 |---|---|
 | Chat API (Python Worker) | https://abinaya-chat-api.dentcare-demo.workers.dev (`/api/health`, `/api/health/ready`) |
 | Widget + playground | https://abinaya-chatbot.dentcare-demo.workers.dev (`/widget.js`) |
-| Website integration | PR [Swethasekar5/Abinayagarment#1](https://github.com/Swethasekar5/Abinayagarment/pull/1) into `develop` |
+| Website integration | **Live**: `develop` @ `bd119c5` ([#1](https://github.com/Swethasekar5/Abinayagarment/pull/1) merged), deployed with `wrangler deploy` |
 
 ## Go-live checklist (remaining steps)
 
@@ -28,8 +28,10 @@ Website ──<script widget.js>──► <abinaya-chat> (React in Shadow DOM) �
 2. **Turnstile hostnames:** add `abinaya-chatbot.dentcare-demo.workers.dev` (the playground) to the widget in the
    Cloudflare dashboard. Until then the playground shows Turnstile error 110200 ("domain not authorized"). The
    website hostname is already authorized.
-3. **Merge the website PR** ([#1](https://github.com/Swethasekar5/Abinayagarment/pull/1)); Cloudflare Builds
-   deploys `develop`.
+3. ~~**Website integration**~~: done 2026-11-26. `develop` was fast-forwarded to the widget commits
+   ([#1](https://github.com/Swethasekar5/Abinayagarment/pull/1) shows as merged), and the site was deployed with
+   `wrangler deploy` from its own folder, because pushes to `develop` did not trigger a Cloudflare build.
+   The website now loads the widget on every page.
 4. **Verify in a browser:** open the website, ask "Are you open on Sundays?", and watch the answer stream.
 5. **Before real production traffic:** switch Gemini to a paid tier (free-tier prompts may be used by Google)
    and have the privacy wording in the PR reviewed.
