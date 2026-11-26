@@ -32,3 +32,23 @@
 
 A production **session** needs a real Turnstile token, which only the browser widget can produce. The full
 production flow (Turnstile → session → streaming chat) is verified in the browser in Phases 15–16.
+
+## End-to-end failure matrix (Phase 17)
+
+| Scenario | Result | Where verified |
+|---|---|---|
+| Widget loads on the real website | Mounted bottom-right; site CSS, fonts and links unchanged; uses the site's Fraunces font | Browser, real website (script injected as in the PR) |
+| Turnstile on the real hostname | Widget runs Turnstile; session request reaches the API from the website origin (CORS ok) | Browser, real website |
+| Valid Turnstile → session → streamed answer | `start` → `token`* → `complete`, grounded answer | Local runtime + browser (test keys); production pending the real site key |
+| Invalid Turnstile token | `403 turnstile_failed` | Production |
+| Expired session | `401 session_expired`, widget renews silently | Local runtime, unit tests |
+| Missing or forged authorization | `401 unauthorized` | Production |
+| Invalid origin | `403 forbidden_origin` | Production |
+| Excessive requests | `429` + `Retry-After: 60` (IP and session limits) | Production (IP), local (session) |
+| Empty knowledge index | `/ready` returns 503 `not_ready`, reason logged | Unit tests |
+| Irrelevant questions | No chunks above 0.60; polite refusal | Local runtime (15-question set) |
+| Gemini failure | Before streaming: JSON 503; during: `error` event | Unit tests (both paths) |
+| Vectorize failure | Upstream error gives JSON 503 | Unit tests |
+| Network disconnection | Gemini aborted via `request.signal`, `client_disconnected` logged | Local runtime |
+| Large input | `413` before the body is read (production); message > 1,000 chars gives `422` | Production, unit tests |
+| Prompt injection | Refused, stays in role, no prompt leak | Local runtime |

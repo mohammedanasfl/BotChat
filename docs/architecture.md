@@ -20,6 +20,23 @@ binding). Consequences:
   API token (Vectorize Write) that exists only on the operator's machine.
 
 
+## As built (final, 2026-11-26)
+
+The system follows this design, with these changes made during implementation, each recorded where it happened:
+
+| Planned | Built | Why |
+|---|---|---|
+| Separate FastAPI + FAISS service | **Cloudflare Vectorize** (`abinaya-kb`, 768 dims, cosine) queried from the Worker | You chose no separate container; native FAISS can't run in Pyodide |
+| `POST /admin/reindex` | Offline indexer CLI (`chunks`, `embed`, `eval`, `sync`) via `wrangler login` | No admin endpoint exposed; incremental embedding |
+| Dev and prod indexes | One index | The Worker only reads it |
+| Rate Limiting binding | **`RateLimiter` Durable Object** with exact fixed windows | The binding never blocks on live workers.dev (workers-sdk#16097) |
+| 47 chunks incl. duplicate FAQs | **34 chunks**, one per section, each fact in one file | Duplicates wasted retrieval slots |
+| Cloudflare Pages project | Static-assets deploy (`wrangler deploy`) | Cloudflare now runs Pages as part of Workers |
+| Gemini `title` per chunk | Heading path inside the embedded text | `title` is per request, not per text |
+
+Live: API `abinaya-chat-api.dentcare-demo.workers.dev`, widget `abinaya-chatbot.dentcare-demo.workers.dev`,
+website PR Swethasekar5/Abinayagarment#1.
+
 ---
 
 ## 1. Inspection results
