@@ -17,9 +17,9 @@
   "vars": {
     "ENVIRONMENT": "production",
     // Exact browser origins allowed to call the API (comma-separated, no wildcards).
-    "ALLOWED_ORIGINS": "https://abinayagarment.dentcare-demo.workers.dev",
+    "ALLOWED_ORIGINS": "https://abinayagarment.dentcare-demo.workers.dev,https://abinaya-chatbot.dentcare-demo.workers.dev",
     // Hostnames a Turnstile token may come from (checked against siteverify's "hostname").
-    "TURNSTILE_ALLOWED_HOSTNAMES": "abinayagarment.dentcare-demo.workers.dev",
+    "TURNSTILE_ALLOWED_HOSTNAMES": "abinayagarment.dentcare-demo.workers.dev,abinaya-chatbot.dentcare-demo.workers.dev",
     "MAX_BODY_BYTES": "32768",
     "MAX_MESSAGE_CHARS": "1000",
     "MAX_HISTORY_MESSAGES": "10",

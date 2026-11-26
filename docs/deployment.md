@@ -1,5 +1,30 @@
 # Deployment
 
+## Frontend (widget + playground)
+
+| Item | Value |
+|---|---|
+| Hosting | Cloudflare static assets: "Pages", which Cloudflare now runs as part of Workers. New Pages projects deploy with `wrangler deploy` |
+| URL | https://abinaya-chatbot.dentcare-demo.workers.dev (playground) · `/widget.js` (embed) |
+| Config | `frontend/wrangler.jsonc` (assets only, no code); `frontend/_headers` (widget.js cached 5 min) |
+| Build-time settings | `frontend/.env.production`: `VITE_API_URL`, `VITE_TURNSTILE_SITE_KEY` (public) |
+
+```bash
+cd frontend
+npm run deploy      # tsc + vite build + wrangler deploy
+```
+
+**Turnstile site key:** `.env.production` still holds Cloudflare's *test* site key (`1x00000000000000000000AA`).
+The production Worker correctly rejects test tokens (verified: the playground shows "We couldn't verify your
+browser"). To go live, put the widget's real **site** key in `frontend/.env.production`, add
+`abinaya-chatbot.dentcare-demo.workers.dev` to the widget's hostnames in the Cloudflare dashboard, and run
+`npm run deploy`.
+
+**Lesson learned:** run `wrangler pages project create` / `wrangler deploy` from the folder whose config you
+mean to deploy. Running it from `backend/cloudflare-worker` created an accidental copy of the API Worker named
+`abinaya-chatbot`, which was deleted straight away.
+
+
 ## Public API (Cloudflare Python Worker)
 
 | Item | Value |
@@ -58,8 +83,10 @@ and that is the user's call.
 
 ## Startup time
 
-Cloudflare documents a 1-second startup budget. Measured at deploy: 545–715 ms. A module-level `import asyncio`
-in `main.py` pushed it to 1,296 ms, so runtime-only imports stay inside the functions that use them.
+Cloudflare documents a 1-second startup budget. The figure Wrangler prints at deploy is noisy: identical code
+measured 556 ms and 1,808 ms on back-to-back deploys (2026-11-26), and every deploy succeeded. An earlier
+1,296 ms reading that I attributed to a module-level `import asyncio` was probably the same noise. Runtime-only
+imports stay inside the functions that use them anyway, which keeps the module light.
 
 ## Verifying streaming
 

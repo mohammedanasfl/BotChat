@@ -4,7 +4,7 @@ React + TypeScript + Vite. The build produces **one self-contained file, `dist/w
 inlined, ~73 KB gzipped), that any allowed website embeds with one tag:
 
 ```html
-<script src="https://abinaya-chatbot.pages.dev/widget.js" defer></script>
+<script src="https://abinaya-chatbot.dentcare-demo.workers.dev/widget.js" defer></script>
 ```
 
 | Attribute (optional) | Default |

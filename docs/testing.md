@@ -1,5 +1,13 @@
 # Testing
 
+## Frontend (`frontend`)
+
+| Layer | Command / method | What it covers |
+|---|---|---|
+| Unit (vitest + jsdom) | `npm test` | SSE parser, streaming client with mocked fetch, ApiError codes, session caching / early renewal / concurrency, error messages |
+| Browser vs local Worker | `npm run dev` + `uv run pywrangler dev` | Turnstile (test key) → session → streamed answers, follow-up questions, host-page CSS isolation (`* { color: red !important }` had no effect), double include gives one element, mobile full-screen layout |
+| Browser vs production | https://abinaya-chatbot.dentcare-demo.workers.dev | widget loads, Turnstile runs, cross-origin session request reaches the API (CORS ok); with the test site key the API answers 403 and the widget shows its error message |
+
 ## Backend (`backend/cloudflare-worker`)
 
 | Layer | Command | What it covers |

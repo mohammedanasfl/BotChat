@@ -6,10 +6,11 @@
   "description": "Embeddable Abinaya Garments chatbot widget (React in a Web Component / Shadow DOM)",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && cp playground.html dist/index.html",
+    "build": "tsc --noEmit && vite build && cp playground.html dist/index.html && cp _headers dist/_headers",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build && npx --prefix ../backend/cloudflare-worker wrangler deploy"
   },
   "engines": {
     "node": ">=22.12"

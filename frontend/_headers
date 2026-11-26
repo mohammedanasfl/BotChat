@@ -1,0 +1,7 @@
+/widget.js
+  Cache-Control: public, max-age=300
+  X-Content-Type-Options: nosniff
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

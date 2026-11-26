@@ -1,0 +1,10 @@
+/**
+ * Static hosting for the widget (Cloudflare "Pages", now part of Workers: static assets only, no code).
+ * Deploy: npm run deploy  ->  https://abinaya-chatbot.dentcare-demo.workers.dev
+ */
+{
+  "$schema": "../backend/cloudflare-worker/node_modules/wrangler/config-schema.json",
+  "name": "abinaya-chatbot",
+  "compatibility_date": "2026-11-23",
+  "assets": { "directory": "./dist" }
+}
