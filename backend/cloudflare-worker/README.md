@@ -39,6 +39,8 @@ cp .dev.vars.example .dev.vars
 | Health check | `curl -i http://localhost:8787/api/health` |
 | Chunk report | `uv run python -m indexer chunks` |
 | Embed knowledge | `uv run --env-file .env python -m indexer embed` |
+| Retrieval eval | `uv run --env-file .env python -m indexer eval` |
+| Upload to Vectorize | `uv run python -m indexer sync` (after `npx wrangler login`) |
 | Live Gemini test | `uv run --env-file .env pytest tests/live` |
 | Deploy (Phase 4+) | `uv run pywrangler deploy` |
 
@@ -60,6 +62,7 @@ overrides them (and will hold secrets). Every value is parsed and validated in
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | |
 | `GEMINI_MAX_OUTPUT_TOKENS` | 1024 | Includes thinking tokens |
 | `SEARCH_TOP_K` | 4 | |
+| `SEARCH_MIN_SCORE` | 0.60 | Calibrated with `indexer eval` (docs/rag.md) |
 
 Secrets (added in later phases, never committed): `GEMINI_API_KEY`, `SESSION_SIGNING_KEY`,
 `TURNSTILE_SECRET_KEY`.

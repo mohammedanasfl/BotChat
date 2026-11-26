@@ -61,11 +61,52 @@ x-goog-api-key: <GEMINI_API_KEY>
 
 The Worker must reject any vector whose length is not 768.
 
+## Vectorize index (Phase 3)
+
+| Setting | Value |
+|---|---|
+| Index | `abinaya-kb`: 768 dimensions, cosine metric, one index for dev and prod (the Worker only reads it) |
+| Record | `id` = chunk id, `values` = embedding, `metadata` = `{document, heading, text}`, so one query returns ready-to-use text |
+| Sync | `python -m indexer sync` upserts all chunks from the cache (no Gemini calls), then deletes ids that no longer exist |
+| Auth | your `wrangler login` session; no extra API token |
+| Plan | created on the Workers **Free** plan without errors (2026-11-26) |
+
+Notes from the first deployment:
+
+- Mutations are eventually consistent. `list-vectors` showed all 34 ids before every vector was queryable;
+  full search worked about 10 seconds later.
+- When querying with `wrangler vectorize query --vector`, pass each value as `--vector=<x>`. Separate
+  arguments such as `-0.018` are read as flags.
+- Vectorize scores match the local cosine calculation within ±0.0002, so local evaluation is valid.
+
+## Retrieval quality and score cutoff
+
+`python -m indexer eval` runs `knowledge/eval_questions.json`: 16 realistic questions (expected sections
+named by heading) plus 4 off-topic ones, including a prompt-injection attempt.
+
+| Metric | Result |
+|---|---|
+| Right section ranked first (hit@1) | 81% (13/16) |
+| Right section in top 3 (hit@3) | **100%** |
+| Lowest score of a correct match | 0.619 |
+| Highest score of an off-topic question | 0.596 |
+
+Decisions:
+
+- `SEARCH_TOP_K = 4`: every correct section appears within the top 3. The rank-2/3 cases are still
+  useful context; for example, "polo price" returns the polo product first and the pricing policy second.
+- `SEARCH_MIN_SCORE = 0.60`: drops off-topic questions (their best match is ≤ 0.596) while keeping every
+  correct match (≥ 0.619). The margin is small, so the cutoff only removes weak matches. The answer prompt
+  (Phase 5) is the real defence against off-topic and injection questions.
+- After editing knowledge files, re-run `embed`, `eval` and `sync`. Re-check the cutoff if the scores move.
+
 ## Commands
 
 ```bash
 cd backend/cloudflare-worker
 uv run python -m indexer chunks                   # chunk report, no API calls
 uv run --env-file .env python -m indexer embed    # embed new/changed chunks
+uv run --env-file .env python -m indexer eval     # retrieval quality report
+uv run python -m indexer sync                     # upload to Vectorize (nvm use; wrangler login)
 uv run --env-file .env pytest tests/live          # live relevance check
 ```

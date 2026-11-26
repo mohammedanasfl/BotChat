@@ -7,9 +7,10 @@ uv run --env-file .env python -m indexer embed   # embed new/changed chunks
 from __future__ import annotations
 
 import argparse
+import json
 import os
 
-from config.embedding import DOCUMENT_TASK_TYPE
+from config.embedding import DOCUMENT_TASK_TYPE, QUERY_TASK_TYPE
 from indexer import CACHE_DIR, KNOWLEDGE_DIR
 from indexer.cache import load_cache, save_cache
 from indexer.chunker import Chunk, chunk_documents
@@ -49,11 +50,54 @@ def cmd_embed() -> None:
     print(f"{len(chunks)} chunks · {len(missing)} embedded · {len(chunks) - len(missing)} cached")
 
 
+def cmd_sync() -> None:
+    from indexer import vectorize
+
+    chunks = load_chunks()
+    vectors = load_cache(CACHE_FILE)
+    missing = [c.chunk_id for c in chunks if c.content_sha256 not in vectors]
+    if missing:
+        raise SystemExit(f"Run `embed` first; no embedding for: {', '.join(missing)}")
+    records = vectorize.build_records(chunks, vectors)
+    vectorize.upsert(records)
+    stale = vectorize.stale_ids(vectorize.list_ids(), records)
+    vectorize.delete(stale)
+    print(f"{vectorize.INDEX_NAME}: upserted {len(records)} · deleted {len(stale)} stale {stale}")
+
+
+def cmd_eval() -> None:
+    from google import genai
+
+    from indexer.embedder import embed_texts
+    from indexer.evaluate import Result, rank_chunks, summarize
+
+    chunks = load_chunks()
+    vectors = load_cache(CACHE_FILE)
+    cases = json.loads((KNOWLEDGE_DIR / "eval_questions.json").read_text(encoding="utf-8"))
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    queries = embed_texts(client, [c["question"] for c in cases], QUERY_TASK_TYPE)
+
+    results = [
+        Result(c["question"], c["expected"], rank_chunks(q, chunks, vectors))
+        for c, q in zip(cases, queries, strict=True)
+    ]
+    for r in results:
+        verdict = "off-topic" if not r.expected else (f"rank {r.rank}" if r.rank else "MISS")
+        score, best = r.ranked[0]
+        print(f"{score:.3f} {verdict:<10} {r.question[:48]:<48} -> {best.heading_path}")
+    stats = summarize(results)
+    print(
+        f"\nhit@1 {stats['hit_at_1']:.0%} · hit@3 {stats['hit_at_3']:.0%} · "
+        f"lowest correct score {stats['min_correct_score']:.3f} · "
+        f"highest off-topic score {stats['max_off_topic_score']:.3f}"
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m indexer")
-    parser.add_argument("command", choices=["chunks", "embed"])
+    parser.add_argument("command", choices=["chunks", "embed", "sync", "eval"])
     args = parser.parse_args(argv)
-    {"chunks": cmd_chunks, "embed": cmd_embed}[args.command]()
+    {"chunks": cmd_chunks, "embed": cmd_embed, "sync": cmd_sync, "eval": cmd_eval}[args.command]()
 
 
 if __name__ == "__main__":
