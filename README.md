@@ -63,7 +63,7 @@ cd backend/cloudflare-worker
 npm install && uv sync
 cp .dev.vars.example .dev.vars             # add GEMINI_API_KEY; generate SESSION_SIGNING_KEY
 npx wrangler login                         # Vectorize has no local simulation (remote binding)
-uv run pytest                              # 148 backend unit tests
+uv run pytest                              # 154 backend unit tests
 uv run pywrangler dev                      # API on http://localhost:8787
 
 cd ../../frontend && npm install

@@ -12,7 +12,7 @@
 
 | Layer | Command | What it covers |
 |---|---|---|
-| Unit (CPython, no network) | `uv run pytest` | 148 tests: settings, routing, errors, CORS, auth (JWT incl. PyJWT interop, Turnstile outcomes), rate limits (Durable Object counter), validation, retrieval, prompt building, Gemini stream parsing, SSE event contract, disconnects, chunking, embeddings, Vectorize records |
+| Unit (CPython, no network) | `uv run pytest` | 154 tests: settings, routing, errors, CORS, auth (JWT incl. PyJWT interop, Turnstile outcomes), rate limits (Durable Object counter), validation, retrieval, prompt building, Gemini stream parsing, follow-up questions, SSE event contract, disconnects, chunking, embeddings, Vectorize records |
 | Live Gemini | `uv run --env-file .env pytest tests/live` | Real embeddings: a related text scores higher than an unrelated one |
 | Retrieval quality | `uv run --env-file .env python -m indexer eval` | 20 labelled questions: hit@1 81%, hit@3 100%, score cutoff 0.60 |
 | Runtime smoke (local) | `uv run pywrangler dev`, then `uv run python tests/runtime/smoke.py` | Real Workers runtime: health, ready, origin 403, 401, 413, session via test Turnstile key, 422, **streaming SSE event order**, grounded answer |

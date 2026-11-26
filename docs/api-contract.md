@@ -58,7 +58,7 @@ event: token
 data: {"text":"printing on polos for corporate orders."}
 
 event: complete
-data: {"finish_reason":"stop","sources":[{"document":"services.md","section":"Custom branding","chunk_id":"services-002"}]}
+data: {"finish_reason":"stop","follow_ups":["Which products can be customised?","Do you offer private labels?"],"sources":[{"chunk_id":"services-002","heading":"Custom branding"}]}
 
 ```
 Failure after streaming started:
@@ -78,7 +78,8 @@ Implementation notes (Phase 8):
 
 Contract rules: exactly one `start`; zero or more `token`; exactly one terminal `complete` **or** `error`, then the
 stream closes. Auth, validation and rate-limit failures happen **before** streaming and use JSON + HTTP status.
-`finish_reason` ∈ `stop | max_tokens | safety | other`. `: ping` comment lines may appear (clients ignore them).
+`finish_reason` ∈ `stop | max_tokens | safety | other`. `follow_ups` holds 0–3 suggested next questions
+(empty for greetings, off-topic or unanswerable questions); the widget shows them as buttons under the latest answer. `: ping` comment lines may appear (clients ignore them).
 
 ### Knowledge index record (Vectorize, internal)
 ```json

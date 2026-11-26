@@ -184,14 +184,15 @@ def test_chat_streams_start_tokens_complete(monkeypatch, capsys):
         "start",
         {"request_id": "r", "conversation_id": "3f8a6c2e-6a1b-4f43-9a51-0c6e2f9d1b77"},
     )
-    assert events[1:3] == [
-        ("token", {"text": "We are "}),
-        ("token", {"text": "closed on Sundays."}),
+    assert events[1:3] == [  # trailing spaces wait for the next delta (see follow_ups.py)
+        ("token", {"text": "We are"}),
+        ("token", {"text": " closed on Sundays."}),
     ]
     assert events[3] == (
         "complete",
         {
             "finish_reason": "stop",
+            "follow_ups": [],
             "sources": [{"chunk_id": "company-004", "heading": HOURS.heading}],
         },
     )
@@ -249,3 +250,17 @@ def test_client_disconnect_is_not_an_error(monkeypatch, capsys):
     assert [e[0] for e in collect(result)] == ["start", "token"]  # no error event
     logs = capsys.readouterr()
     assert "client_disconnected" in logs.out and "stream_failed" not in logs.err
+
+
+def test_chat_sends_follow_ups_in_complete_and_hides_marker(monkeypatch):
+    deltas = ("Closed on Sundays.\n<<FOL", "LOW_UPS>>\n- What are your hours?\n", "Where are you?")
+    stub_gemini(monkeypatch, deltas=deltas)
+    events = collect(chat(make_env(MATCHES), '{"message":"Open Sunday?"}'))
+    shown = "".join(e[1]["text"] for e in events if e[0] == "token")
+    assert shown == "Closed on Sundays."
+    assert events[-1][1]["follow_ups"] == ["What are your hours?", "Where are you?"]
+
+
+def test_marker_only_stream_is_an_error(monkeypatch):
+    stub_gemini(monkeypatch, deltas=("<<FOLLOW_UPS>>\nWhat?",))
+    assert [e[0] for e in collect(chat(make_env(), '{"message":"hi"}'))] == ["start", "error"]

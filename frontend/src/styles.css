@@ -92,6 +92,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   cursor: pointer;
 }
 .suggestion:hover { border-color: var(--primary); }
+.follow-ups { align-self: flex-start; max-width: 85%; }
+.follow-ups .suggestion { font-size: 13px; padding: 7px 10px; }
 
 .bubble {
   max-width: 85%;

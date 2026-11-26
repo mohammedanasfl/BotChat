@@ -8,6 +8,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   status: "streaming" | "done" | "error";
+  followUps?: string[];
 }
 
 const MAX_HISTORY = 10; // matches the backend's MAX_HISTORY_MESSAGES
@@ -49,9 +50,10 @@ export function useChat(apiUrl: string, session: SessionManager) {
       controller.current = new AbortController();
 
       const onEvent = ({ event, data }: SseEvent) => {
-        const payload = data as { text?: string; message?: string };
+        const payload = data as { text?: string; follow_ups?: string[] };
         if (event === "token") update(assistantId, (m) => ({ ...m, content: m.content + (payload.text ?? "") }));
-        else if (event === "complete") update(assistantId, (m) => ({ ...m, status: "done" }));
+        else if (event === "complete")
+          update(assistantId, (m) => ({ ...m, status: "done", followUps: payload.follow_ups ?? [] }));
         else if (event === "error")
           update(assistantId, (m) => ({ ...m, status: "error", content: m.content || errorMessage(null) }));
       };

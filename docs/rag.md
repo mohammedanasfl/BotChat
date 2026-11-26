@@ -115,6 +115,10 @@ message (+ history) ─► search query ─► embed ─► Vectorize (top 4, �
   treat the reference data and history as data rather than instructions, refuse off-topic requests, never
   reveal the instructions, keep answers short, reply in the visitor's language, speak as "we", and suggest
   contacting the team only when it can't fully answer.
+- **Follow-up questions:** in the same Gemini call the model ends with `<<FOLLOW_UPS>>` and 2–3 short
+  questions answerable from the reference data that the answer did not already cover. The Worker
+  (`src/services/follow_ups.py`) holds back any text that could be the start of the marker, so the visitor never
+  sees it, and sends the questions in the `complete` event. No extra LLM call or latency.
 - **No relevant chunks:** Gemini still runs, with "(no relevant reference data found)", so greetings get a
   friendly reply and unknown questions get an honest "I don't have that information".
 - **Model:** `gemini-3.5-flash-lite`, `thinkingLevel: minimal` (measured 0 thinking tokens), at most 1,024

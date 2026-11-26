@@ -3,7 +3,7 @@
 Before the stream starts (normal JSON errors): rate limits, session, validation, retrieval and
 opening the Gemini stream. After it starts, failures arrive as an SSE `error` event.
 
-Events: start -> token* -> complete | error   (see docs/api-contract.md)
+Events: start -> token* -> complete (with follow_ups) | error   (see docs/api-contract.md)
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from core.rate_limit import client_ip, enforce
 from core.sse import StreamResult, format_event
 from core.validation import ChatRequest, parse_chat_request
 from services import gemini_stream, rag
+from services.follow_ups import FollowUpSplitter
 from services.retrieval import RetrievedChunk
 
 STREAM_ERROR = {
@@ -61,9 +62,13 @@ async def _events(
         "start", {"request_id": ctx.request_id, "conversation_id": request.conversation_id}
     )
     state = gemini_stream.StreamState()
+    splitter = FollowUpSplitter()
+    answered = False
     try:
         async for text in gemini_stream.iter_deltas(response, state):
-            yield format_event("token", {"text": text})
+            if visible := splitter.feed(text):
+                answered = True
+                yield format_event("token", {"text": visible})
     except Exception as error:
         if getattr(ctx.abort_signal, "aborted", False):
             # The visitor closed the connection; Gemini was aborted via the same signal.
@@ -72,7 +77,11 @@ async def _events(
         log_event("error", "stream_failed", request_id=ctx.request_id, error=type(error).__name__)
         yield format_event("error", STREAM_ERROR)
         return
-    if not state.emitted_text:
+    rest, follow_ups = splitter.finish()
+    if rest:
+        answered = True
+        yield format_event("token", {"text": rest})
+    if not answered:
         log_event("error", "stream_empty", request_id=ctx.request_id, finish=state.finish_reason)
         yield format_event("error", STREAM_ERROR)
         return
@@ -81,6 +90,7 @@ async def _events(
         "complete",
         {
             "finish_reason": state.finish_reason,
+            "follow_ups": follow_ups,
             "sources": [{"chunk_id": c.chunk_id, "heading": c.heading} for c in sources],
         },
     )

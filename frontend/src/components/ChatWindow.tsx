@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { WidgetConfig } from "../config/config";
 import { useChat } from "../hooks/useChat";
 import type { SessionManager } from "../services/session";
@@ -67,10 +67,22 @@ export function ChatWindow({ config, session, onClose }: Props) {
             </div>
           </div>
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className={`bubble ${m.role} ${m.status}`}>
-              {m.content || (m.status === "streaming" ? <span className="typing" aria-label="Typing" /> : null)}
-            </div>
+          messages.map((m, i) => (
+            <Fragment key={m.id}>
+              <div className={`bubble ${m.role} ${m.status}`}>
+                {m.content || (m.status === "streaming" ? <span className="typing" aria-label="Typing" /> : null)}
+              </div>
+              {/* Follow-up questions only under the latest answer. */}
+              {i === messages.length - 1 && !busy && m.followUps?.length ? (
+                <div className="suggestions follow-ups" aria-label="Suggested questions">
+                  {m.followUps.map((text) => (
+                    <button key={text} type="button" className="suggestion" onClick={() => void send(text)}>
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </Fragment>
           ))
         )}
       </div>
