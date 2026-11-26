@@ -18,7 +18,8 @@ class Default(WorkerEntrypoint):
         # Raw JS string: the SDK's `request.method` raises KeyError for non-standard methods.
         method = str(request.js_object.method)
         headers = {key: value for key, value in request.headers.items()}
-        result = await dispatch(method, request.url, headers, self.env, request_id)
+        body = await request.text() if method in ("POST", "PUT", "PATCH") else ""
+        result = await dispatch(method, request.url, headers, self.env, request_id, body)
         return Response(
             result.encoded_body(),
             status=result.status,

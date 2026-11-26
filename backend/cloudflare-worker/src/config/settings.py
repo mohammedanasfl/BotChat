@@ -9,7 +9,7 @@ fails loudly and early instead of surfacing deep inside a request.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -33,6 +33,8 @@ class Settings:
     gemini_model: str
     gemini_max_output_tokens: int
     search_top_k: int
+    search_min_score: float
+    gemini_api_key: str = field(default="", repr=False)  # secret: never logged
     version: str = APP_VERSION
 
     @property
@@ -61,6 +63,8 @@ class Settings:
                 env, "GEMINI_MAX_OUTPUT_TOKENS", 1_024, minimum=64, maximum=8_192
             ),
             search_top_k=_read_int(env, "SEARCH_TOP_K", 4, minimum=1, maximum=10),
+            search_min_score=_read_float(env, "SEARCH_MIN_SCORE", 0.60),
+            gemini_api_key=_read_str(env, "GEMINI_API_KEY", default=""),
         )
         settings._validate()
         return settings
@@ -99,6 +103,25 @@ def _read_int(env: Any, name: str, default: int, *, minimum: int, maximum: int) 
     if not minimum <= number <= maximum:
         raise ConfigError(f"{name} must be between {minimum} and {maximum}")
     return number
+
+
+def _read_float(env: Any, name: str, default: float) -> float:
+    value = _raw(env, name)
+    if value is None or str(value).strip() == "":
+        return default
+    try:
+        number = float(str(value).strip())
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be a number") from exc
+    if not 0.0 <= number <= 1.0:
+        raise ConfigError(f"{name} must be between 0 and 1")
+    return number
+
+
+def require_gemini_key(settings: Settings) -> str:
+    if not settings.gemini_api_key:
+        raise ConfigError("GEMINI_API_KEY secret is not set")
+    return settings.gemini_api_key
 
 
 def _parse_origins(raw: str) -> tuple[str, ...]:

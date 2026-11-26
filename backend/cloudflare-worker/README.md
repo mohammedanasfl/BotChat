@@ -42,7 +42,8 @@ cp .dev.vars.example .dev.vars
 | Retrieval eval | `uv run --env-file .env python -m indexer eval` |
 | Upload to Vectorize | `uv run python -m indexer sync` (after `npx wrangler login`) |
 | Live Gemini test | `uv run --env-file .env pytest tests/live` |
-| Deploy (Phase 4+) | `uv run pywrangler deploy` |
+| Deploy | `uv run pywrangler deploy` (see docs/deployment.md) |
+| Dev-only search | `curl -X POST localhost:8787/api/dev/search -d '{"query":"Are you open on Sunday?"}'` |
 
 ## Configuration
 
@@ -64,5 +65,7 @@ overrides them (and will hold secrets). Every value is parsed and validated in
 | `SEARCH_TOP_K` | 4 | |
 | `SEARCH_MIN_SCORE` | 0.60 | Calibrated with `indexer eval` (docs/rag.md) |
 
-Secrets (added in later phases, never committed): `GEMINI_API_KEY`, `SESSION_SIGNING_KEY`,
-`TURNSTILE_SECRET_KEY`.
+Bindings: `VECTORIZE` → `abinaya-kb` (`remote: true` so local dev uses the real index).
+
+Secrets (never committed): `GEMINI_API_KEY` (in `.dev.vars` locally, `wrangler secret put` in production);
+`SESSION_SIGNING_KEY` and `TURNSTILE_SECRET_KEY` follow in Phase 6.

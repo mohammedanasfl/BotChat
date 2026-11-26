@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import secrets
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -23,4 +24,16 @@ class RequestContext:
     path: str
     settings: Settings
     headers: dict[str, str] = field(default_factory=dict)  # lower-cased names
-    env: Any = None  # raw bindings (secrets, Vectorize, rate limiters) for later phases
+    body: str = ""
+    env: Any = None  # raw bindings (Vectorize, rate limiters)
+
+    def json(self) -> dict[str, Any]:
+        from core.errors import ApiError, ErrorCode
+
+        try:
+            data = json.loads(self.body or "null")
+        except ValueError as exc:
+            raise ApiError(ErrorCode.BAD_REQUEST, "Request body must be valid JSON.") from exc
+        if not isinstance(data, dict):
+            raise ApiError(ErrorCode.BAD_REQUEST, "Request body must be a JSON object.")
+        return data

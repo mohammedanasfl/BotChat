@@ -16,10 +16,12 @@ JSON_CONTENT_TYPE = "application/json; charset=utf-8"
 @dataclass(frozen=True)
 class JsonResult:
     status: int
-    body: dict[str, Any]
+    body: dict[str, Any] | None  # None = no body (e.g. 204 preflight)
     headers: dict[str, str] = field(default_factory=dict)
 
-    def encoded_body(self) -> str:
+    def encoded_body(self) -> str | None:
+        if self.body is None:
+            return None
         return json.dumps(self.body, separators=(",", ":"), ensure_ascii=False)
 
 
