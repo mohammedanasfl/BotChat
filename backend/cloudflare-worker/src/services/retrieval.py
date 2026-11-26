@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from config.embedding import EMBEDDING_DIMENSIONS
+from core.interop import to_js, to_python
 
 
 @dataclass(frozen=True)
@@ -14,21 +15,6 @@ class RetrievedChunk:
     heading: str
     text: str
     score: float
-
-
-def to_python(value: Any) -> Any:
-    """Convert a JS proxy returned by a binding into plain Python (no-op for Python values)."""
-    return value.to_py() if hasattr(value, "to_py") else value
-
-
-def to_js(value: Any) -> Any:
-    """Convert Python dicts/lists into JS objects/arrays for binding calls (no-op off-runtime)."""
-    try:
-        from js import Object
-        from pyodide.ffi import to_js as _to_js
-    except ImportError:
-        return value
-    return _to_js(value, dict_converter=Object.fromEntries)
 
 
 def filter_matches(matches: list[dict[str, Any]], min_score: float) -> list[RetrievedChunk]:

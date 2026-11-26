@@ -7,7 +7,7 @@
 | Worker | `abinaya-chat-api` |
 | URL | https://abinaya-chat-api.dentcare-demo.workers.dev |
 | Account | the same Cloudflare account as the website (`dentcare-demo.workers.dev`) |
-| Bindings | `VECTORIZE` → `abinaya-kb` |
+| Bindings | `VECTORIZE` → `abinaya-kb`; `RATE_LIMITER` → `RateLimiter` Durable Object (migration `v1`) |
 | Secrets | `GEMINI_API_KEY`, `TURNSTILE_SECRET_KEY`, `SESSION_SIGNING_KEY` (see docs/authentication.md) |
 
 ```bash

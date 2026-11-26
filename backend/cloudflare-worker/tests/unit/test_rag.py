@@ -11,6 +11,7 @@ from services import embeddings, gemini_client
 from services.gemini_client import BLOCKED_MESSAGE, parse_generation
 from services.http import UpstreamError
 from services.retrieval import RetrievedChunk
+from tests.unit.conftest import FakeRateLimiter
 
 HOURS = RetrievedChunk("company-004", "Company › Working hours", "Mon-Sat 9-7.", 0.65)
 
@@ -140,6 +141,7 @@ def make_env(matches=()):
         GEMINI_API_KEY="k",
         SESSION_SIGNING_KEY=KEY,
         VECTORIZE=FakeIndex(list(matches)),
+        RATE_LIMITER=FakeRateLimiter(),
     )
 
 

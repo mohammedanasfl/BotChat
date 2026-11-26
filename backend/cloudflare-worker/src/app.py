@@ -30,6 +30,8 @@ async def dispatch(
     env: Any,
     request_id: str,
     body: str = "",
+    *,
+    body_too_large: bool = False,  # set from Content-Length before the body was read
 ) -> JsonResult:
     started = time.monotonic()
     path = urlsplit(url).path
@@ -43,7 +45,7 @@ async def dispatch(
             result = preflight()
         else:
             handler = resolve(method, path)
-            if len(body.encode("utf-8")) > settings.max_body_bytes:
+            if body_too_large or len(body.encode("utf-8")) > settings.max_body_bytes:
                 raise ApiError(ErrorCode.PAYLOAD_TOO_LARGE)
             ctx = RequestContext(
                 request_id=request_id,

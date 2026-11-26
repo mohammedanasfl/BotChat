@@ -29,11 +29,21 @@
     "SEARCH_TOP_K": "4",
     // Chunks scoring below this cosine similarity are ignored (calibrated in Phase 3:
     // lowest correct match 0.619, highest off-topic question 0.596).
-    "SEARCH_MIN_SCORE": "0.60"
+    "SEARCH_MIN_SCORE": "0.60",
+    // Requests allowed per 60-second window.
+    "RATE_LIMIT_SESSION_IP": "5",
+    "RATE_LIMIT_CHAT_IP": "20",
+    "RATE_LIMIT_CHAT_SESSION": "8"
   },
   // Knowledge index (read-only from the Worker; written by `python -m indexer sync`).
   // Vectorize has no local simulation, so `pywrangler dev` uses the real index remotely.
   "vectorize": [
     { "binding": "VECTORIZE", "index_name": "abinaya-kb", "remote": true }
-  ]
+  ],
+  // Exact per-key rate limiting: one RateLimiter Durable Object per key (e.g. "chat-ip:<ip>").
+  // (The Workers Rate Limiting binding never blocks on live workers.dev: workers-sdk#16097.)
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }]
 }

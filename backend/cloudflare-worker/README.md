@@ -64,8 +64,10 @@ overrides them (and will hold secrets). Every value is parsed and validated in
 | `GEMINI_MAX_OUTPUT_TOKENS` | 1024 | Includes thinking tokens |
 | `SEARCH_TOP_K` | 4 | |
 | `SEARCH_MIN_SCORE` | 0.60 | Calibrated with `indexer eval` (docs/rag.md) |
+| `RATE_LIMIT_SESSION_IP` / `RATE_LIMIT_CHAT_IP` / `RATE_LIMIT_CHAT_SESSION` | 5 / 20 / 8 | Requests per 60 s (docs/security.md) |
 
-Bindings: `VECTORIZE` → `abinaya-kb` (`remote: true` so local dev uses the real index).
+Bindings: `VECTORIZE` → `abinaya-kb` (`remote: true` so local dev uses the real index); `RATE_LIMITER`
+→ `RateLimiter` Durable Object (`src/durable/rate_limiter.py`).
 
 Secrets (never committed; `.dev.vars` locally, `wrangler secret put` in production): `GEMINI_API_KEY`,
 `TURNSTILE_SECRET_KEY`, `SESSION_SIGNING_KEY`. See docs/authentication.md.

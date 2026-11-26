@@ -8,12 +8,15 @@ from config.settings import require_secret
 from core.context import RequestContext
 from core.errors import ApiError, ErrorCode
 from core.log import log_event
+from core.rate_limit import client_ip, enforce
 from core.responses import JsonResult, json_result
 from services.tokens import issue_token
 from services.turnstile import MAX_TOKEN_LENGTH, check_result, siteverify
 
 
 async def create_session(ctx: RequestContext) -> JsonResult:
+    # Before any Turnstile call.
+    await enforce(ctx.env.RATE_LIMITER, "session-ip", client_ip(ctx), ctx.settings.rate_session_ip)
     token = ctx.json().get("turnstile_token")
     if not isinstance(token, str) or not token or len(token) > MAX_TOKEN_LENGTH:
         raise ApiError(ErrorCode.VALIDATION_ERROR, "'turnstile_token' is required.")

@@ -35,6 +35,10 @@ class Settings:
     search_top_k: int
     search_min_score: float
     turnstile_allowed_hostnames: tuple[str, ...] = ()
+    # Requests allowed per 60 s window.
+    rate_session_ip: int = 5
+    rate_chat_ip: int = 20
+    rate_chat_session: int = 8
     # Secrets: excluded from repr so they never reach logs.
     gemini_api_key: str = field(default="", repr=False)
     turnstile_secret_key: str = field(default="", repr=False)
@@ -73,6 +77,9 @@ class Settings:
                 for h in _read_str(env, "TURNSTILE_ALLOWED_HOSTNAMES", default="").split(",")
                 if h.strip()
             ),
+            rate_session_ip=_read_int(env, "RATE_LIMIT_SESSION_IP", 5, minimum=1, maximum=1000),
+            rate_chat_ip=_read_int(env, "RATE_LIMIT_CHAT_IP", 20, minimum=1, maximum=1000),
+            rate_chat_session=_read_int(env, "RATE_LIMIT_CHAT_SESSION", 8, minimum=1, maximum=1000),
             gemini_api_key=_read_str(env, "GEMINI_API_KEY", default=""),
             turnstile_secret_key=_read_str(env, "TURNSTILE_SECRET_KEY", default=""),
             session_signing_key=_read_str(env, "SESSION_SIGNING_KEY", default=""),

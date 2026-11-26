@@ -10,6 +10,7 @@ from services import embeddings, gemini_client
 from services.http import UpstreamError
 from services.tokens import issue_token
 from services.turnstile import check_result
+from tests.unit.conftest import FakeRateLimiter
 
 KEY = "k" * 48
 HOST = "abinayagarment.dentcare-demo.workers.dev"
@@ -23,6 +24,7 @@ def env(**overrides):
         SESSION_SIGNING_KEY=KEY,
         GEMINI_API_KEY="g",
         VECTORIZE=SimpleNamespace(),
+        RATE_LIMITER=FakeRateLimiter(),
     )
     return SimpleNamespace(**{**base, **overrides})
 
